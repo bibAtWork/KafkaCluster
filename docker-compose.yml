@@ -1,0 +1,211 @@
+version: "3.7"
+
+services:
+  zookeeper:
+    ## Ref.: https://github.com/bitnami/bitnami-docker-zookeeper
+    image: "bitnami/zookeeper:3.7"
+    hostname: zookeeper.kafka.docker-host
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+#      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOO_ENABLE_AUTH=yes
+      - ZOO_SERVER_USERS=user1,user2
+      - ZOO_SERVER_PASSWORDS=pass4user1,pass4user2
+      - ZOO_CLIENT_USER=user1
+      - ZOO_CLIENT_PASSWORD=pass4user1
+    networks:
+      - middleware-net
+
+  kafka-broker1:
+    image: "bitnami/kafka:2.8.1"
+    hostname: broker1.kafka.docker-host
+    container_name: kafka-broker-1
+    ports:
+      - "19091:19091"
+    environment:
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CFG_PORT=9091
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:SSL,CLIENT:SASL_SSL
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9091,CLIENT://:19091
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://broker1.kafka.docker-host:9091,CLIENT://broker1.kafka.docker-host:19091
+      - KAFKA_CERTIFICATE_PASSWORD=changeme
+      - KAFKA_CLIENT_USERS=kafka_client
+      - KAFKA_CLIENT_PASSWORDS=changeme
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ZOOKEEPER_PROTOCOL=SASL
+      - KAFKA_ZOOKEEPER_USER=user1
+      - KAFKA_ZOOKEEPER_PASSWORD=pass4user1
+    volumes:
+      - "./kafka-certs/keystore/broker1.keystore.jks:/bitnami/kafka/config/certs/kafka.keystore.jks"
+      - "./kafka-certs/truststore/kafka.truststore.jks:/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # - kafka1_data:/bitnami
+    depends_on:
+      - zookeeper
+    networks:
+      - middleware-net
+
+  kafka-broker2:
+    image: "bitnami/kafka:2.8.1"
+    hostname: broker2.kafka.docker-host
+    container_name: kafka-broker-2
+    ports:
+      - "19092:19092"
+    environment:
+      - KAFKA_CFG_BROKER_ID=2
+      - KAFKA_CFG_PORT=9092
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:SSL,CLIENT:SASL_SSL
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,CLIENT://:19092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://broker2.kafka.docker-host:9092,CLIENT://broker2.kafka.docker-host:19092
+      - KAFKA_CERTIFICATE_PASSWORD=changeme
+      - KAFKA_CLIENT_USERS=kafka_client
+      - KAFKA_CLIENT_PASSWORDS=changeme
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ZOOKEEPER_PROTOCOL=SASL
+      - KAFKA_ZOOKEEPER_USER=user1
+      - KAFKA_ZOOKEEPER_PASSWORD=pass4user1
+    volumes:
+      - "./kafka-certs/keystore/broker2.keystore.jks:/bitnami/kafka/config/certs/kafka.keystore.jks"
+      - "./kafka-certs/truststore/kafka.truststore.jks:/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # - kafka1_data:/bitnami
+    depends_on:
+      - zookeeper
+    networks:
+      - middleware-net
+
+  kafka-broker3:
+    image: "bitnami/kafka:2.8.1"
+    hostname: broker3.kafka.docker-host
+    container_name: kafka-broker-3
+    ports:
+      - "19093:19093"
+    environment:
+      - KAFKA_CFG_BROKER_ID=3
+      - KAFKA_CFG_PORT=9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:SSL,CLIENT:SASL_SSL
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9093,CLIENT://:19093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://broker3.kafka.docker-host:9093,CLIENT://broker3.kafka.docker-host:19093
+      - KAFKA_CERTIFICATE_PASSWORD=changeme
+      - KAFKA_CLIENT_USERS=kafka_client
+      - KAFKA_CLIENT_PASSWORDS=changeme
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ZOOKEEPER_PROTOCOL=SASL
+      - KAFKA_ZOOKEEPER_USER=user1
+      - KAFKA_ZOOKEEPER_PASSWORD=pass4user1
+    volumes:
+      - "./kafka-certs/keystore/broker3.keystore.jks:/bitnami/kafka/config/certs/kafka.keystore.jks"
+      - "./kafka-certs/truststore/kafka.truststore.jks:/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # - kafka1_data:/bitnami
+    depends_on:
+      - zookeeper
+    networks:
+      - middleware-net  
+
+  schemaregistry:
+    ## Ref.: https://github.com/confluentinc/demo-scene/blob/master/gcp-pipeline/docker-compose-ccloud.yml
+    image: confluentinc/cp-schema-registry:6.1.4
+    hostname: schemaregistry.kafka.docker-host
+    container_name: kafka-schemaregistry
+    ports:
+      - "18085:18085"
+    environment:
+#      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "SASL_SSL://broker1.kafka.docker-host:19091"
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SASL_SSL
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: SCRAM-SHA-256
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_JAAS_CONFIG: ' org.apache.kafka.common.security.scram.ScramLoginModule required username="kafka_client" password="changeme";' 
+      SCHEMA_REGISTRY_DEBUG: "true"
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry.kafka.docker-host
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:18085"
+      
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka.client.truststore.jks
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_TRUSTSTORE_PASSWORD: changeme
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka.consumer.keystore.jks
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_PASSWORD: changeme
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_KEY_PASSWORD: changeme
+      
+#      JAVA_OPTS: >-
+#        -Djavax.net.ssl.trustStore=/etc/kafka/secrets/kafka.client.truststore.jks
+#        -Djavax.net.ssl.trustStorePassword=changeme
+#        -Djavax.net.ssl.keyStore=/etc/kafka/secrets/kafka.client.keystore.jks
+#        -Djavax.net.ssl.keyStorePassword=changeme
+      
+    volumes:
+      - "./kafka-certs/keystore/consumer.keystore.jks:/etc/kafka/secrets/kafka.consumer.keystore.jks"
+      - "./kafka-certs/truststore/kafka.truststore.jks:/etc/kafka/secrets/kafka.client.truststore.jks"
+
+
+    depends_on:
+      - zookeeper
+    networks:
+      - middleware-net  
+  
+
+  kafka-ui:
+    ## Ref.: https://github.com/provectus/kafka-ui
+    image: provectuslabs/kafka-ui:0.3.3
+    hostname: kafka-ui.kafka.docker-host
+    container_name: kafka-ui
+    ports:
+      - target: 8080
+        published: 9000
+        protocol: tcp
+        mode: host 
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker1.kafka.docker-host:19091
+      KAFKA_CLUSTERS_0_READONLY: 'false'
+      # Kafka Broker
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_LOCATION: /opt/cert/kafka.truststore.jks
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_TRUSTSTORE_PASSWORD: changeme
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_LOCATION: /opt/cert/kafka.keystore.jks
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEYSTORE_PASSWORD: changeme
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_KEY_PASSWORD: changeme
+      ## SSL
+      #KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SSL
+      #KAFKA_CLUSTERS_0_PROPERTIES_SSL_CLIENT_AUTH: required
+      #KAFKA_CLUSTERS_0_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+      ## SASL_SSL
+      KAFKA_CLUSTERS_0_PROPERTIES_PROTOCOL: SASL
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_SSL
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: SCRAM-SHA-256
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="kafka_client" password="changeme";
+      KAFKA_CLUSTERS_0_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+
+      # Zookeeper	
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_ZOOKEEPER_CLIENT_SECURE: 'true'
+      KAFKA_CLUSTERS_0_ZOOKEEPER_PROTOCOL: SASL
+      KAFKA_CLUSTERS_0_ZOOKEEPER_USER: user1
+      KAFKA_CLUSTERS_0_ZOOKEEPER_PASSWORD: pass4user1
+      
+      # SchemaRegistry
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: "http://schemaregistry.kafka.docker-host:18085"
+      
+      # Java properties
+      LOGGING_LEVEL_ROOT: info
+      JAVA_OPTS: >-
+        -Djavax.net.ssl.trustStore=/opt/cert/kafka.truststore.jks
+        -Djavax.net.ssl.trustStorePassword=changeme
+        -Djavax.net.ssl.keyStore=/opt/cert/kafka.keystore.jks
+        -Djavax.net.ssl.keyStorePassword=changeme
+      
+    volumes:
+      - "./kafka-certs/truststore/kafka.truststore.jks:/opt/cert/kafka.truststore.jks"
+      - "./kafka-certs/keystore/producer.keystore.jks:/opt/cert/kafka.keystore.jks"
+      
+    networks:
+      - middleware-net
+#    restart: always
+    depends_on:
+      - zookeeper
+
+
+networks:
+  middleware-net:
+    name: "middleware-net"
+    driver: bridge
